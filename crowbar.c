@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 #include <time.h>
+#include <threads.h>
 
 #include "passdb.h"
 #include "config.h"
@@ -44,6 +45,7 @@ int main(int argc, char * argv[argc+1]) {
     }
 
     if(config.verbose) printf("Trying to open %s with passwords from %s.\n", config.zip_file, config.passdb_file);
+    if(config.verbose) printf("Using %i threads.\n", config.num_threads);
 
     FILE* passdb_file = fopen(config.passdb_file, "r");
 
@@ -107,8 +109,9 @@ void print_usage() {
     puts("Usage: crowbar [OPTION]... PASSDB ZIPFILE");
     puts("Tries to crack a password protected zip files by trying the passwords from PASSDB");
     puts("Options:");
-    puts("\t--help\t\tDisplay this information");
-    puts("\t--verbose\tPrint more information during execution");
+    puts("\t--help\t\t\tDisplay this information");
+    puts("\t--verbose\t\tPrint more information during execution");
+    puts("\t--num-threads <n>\tUser <n> threads. Default: 1");
     puts("");
     puts("PASSDB: Textfile that contains passwords to try. One password per line.");
     puts("");

@@ -31,6 +31,7 @@ typedef struct config config;
 struct config {
     bool print_usage;
     bool verbose;
+    int num_threads;
     char const * const passdb_file;
     char const * const zip_file;
 };

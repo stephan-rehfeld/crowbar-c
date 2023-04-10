@@ -25,10 +25,12 @@ SOFTWARE.
 #include "config.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 config parse_config(int argc, char * argv[argc+1]) {
     bool print_usage = false;
     bool verbose = false;
+    int num_threads = 1;
     char * passdb_file = argv[argc-2];
     char * zip_file = argv[argc-1];
 
@@ -37,10 +39,12 @@ config parse_config(int argc, char * argv[argc+1]) {
             print_usage = true;
         } else if(!strcmp(argv[i], "--verbose")) {
             verbose = true;
+        } else if(!strcmp(argv[i], "--num-threads")) {
+            num_threads = atoi(argv[i+1]);
         }
     }
 
-    config config  = { print_usage, verbose, passdb_file, zip_file };
+    config config  = { print_usage, verbose, num_threads, passdb_file, zip_file };
 
     return config;
 }
