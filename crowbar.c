@@ -31,6 +31,17 @@ SOFTWARE.
 
 void print_usage();
 
+typedef struct crack_task crack_task;
+struct crack_task {
+    size_t begin_index;
+    size_t num_passwords;
+    passdb passdb;
+    char const * zip_file;
+    char const * * result;
+};
+
+int crack_function(void* data);
+
 int main(int argc, char * argv[argc+1]) {
     if(argc < 3) {
         print_usage();
@@ -72,18 +83,23 @@ int main(int argc, char * argv[argc+1]) {
         return EXIT_FAILURE; 
     }
 
+    zip_close(zip_file);
+
     /* HERE, the interesting stuff happens */
 
     char const * password = NULL;
 
     time_t start_time = time(NULL);
 
-    for(size_t i = 0; i < passdb.num_passwords; ++i) {
-        if(try_password(passdb.passwords[i], zip_file)) {
-            password = passdb.passwords[i];
-            break;
-        }
-    }
+    crack_task task = { 0, passdb.num_passwords, passdb, config.zip_file, &password };
+
+    thrd_t thread_handle;
+
+    thrd_create(&thread_handle, crack_function, &task);
+
+    int return_code = 0;
+
+    thrd_join(thread_handle, &return_code);
 
     double exec_time = difftime(time(NULL), start_time);
 
@@ -96,12 +112,37 @@ int main(int argc, char * argv[argc+1]) {
     }
     
     destroy_passdb(&passdb);
-    zip_close(zip_file);
 
     if(password) {
         return EXIT_SUCCESS;
     }
 
+    return EXIT_FAILURE;
+}
+
+int crack_function(void* data) {
+    crack_task * task = (crack_task*)data;
+    
+    int error_code = 0;
+
+    zip_t * zip_file = zip_open(task->zip_file, ZIP_RDONLY, &error_code );
+
+    if(!zip_file) {
+        fprintf(stderr, "Failed to load ZIPFILE file %s.\n", task->zip_file);
+        return EXIT_FAILURE; 
+    }
+    
+    char const * * passwords = task->passdb.passwords + task->begin_index;
+
+    for(size_t i = 0; i < task->num_passwords; ++i) {
+        if(try_password(passwords[i], zip_file)) {
+            *(task->result) = passwords[i];
+            zip_close(zip_file);
+            return EXIT_SUCCESS;
+        }
+    }
+
+    zip_close(zip_file);
     return EXIT_FAILURE;
 }
 
