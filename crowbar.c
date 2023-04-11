@@ -91,15 +91,29 @@ int main(int argc, char * argv[argc+1]) {
 
     time_t start_time = time(NULL);
 
-    crack_task task = { 0, passdb.num_passwords, passdb, config.zip_file, &password };
+    crack_task tasks[config.num_threads];
+    size_t passwords_per_thread = passdb.num_passwords / config.num_threads;
+    size_t rest = passdb.num_passwords % config.num_threads;
+    for( size_t i = 0; i < (size_t)config.num_threads; ++i) {
+        tasks[i].begin_index = i * passwords_per_thread;
+        tasks[i].num_passwords = passwords_per_thread;
+        tasks[i].passdb = passdb;
+        tasks[i].zip_file = config.zip_file;
+        tasks[i].result = &password;
+    }
+    tasks[config.num_threads-1].num_passwords = passwords_per_thread + rest;
 
-    thrd_t thread_handle;
+    thrd_t thread_handles[config.num_threads];
 
-    thrd_create(&thread_handle, crack_function, &task);
+    for(size_t i = 0; i < (size_t)config.num_threads; ++i) {
+        thrd_create(&(thread_handles[i]), crack_function, &(tasks[i]));
+    }
 
     int return_code = 0;
 
-    thrd_join(thread_handle, &return_code);
+    for(size_t i = 0; i < (size_t)config.num_threads; ++i) {
+        thrd_join(thread_handles[i], &return_code);
+    }
 
     double exec_time = difftime(time(NULL), start_time);
 
@@ -122,16 +136,16 @@ int main(int argc, char * argv[argc+1]) {
 
 int crack_function(void* data) {
     crack_task * task = (crack_task*)data;
-    
+
     int error_code = 0;
 
     zip_t * zip_file = zip_open(task->zip_file, ZIP_RDONLY, &error_code );
 
     if(!zip_file) {
         fprintf(stderr, "Failed to load ZIPFILE file %s.\n", task->zip_file);
-        return EXIT_FAILURE; 
+        return EXIT_FAILURE;
     }
-    
+
     char const * * passwords = task->passdb.passwords + task->begin_index;
 
     for(size_t i = 0; i < task->num_passwords; ++i) {
